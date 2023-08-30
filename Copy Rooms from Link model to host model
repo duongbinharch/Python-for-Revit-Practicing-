@@ -1,0 +1,72 @@
+import clr
+clr.AddReference('RevitAPI')
+from Autodesk.Revit.DB import *
+from Autodesk.Revit.UI import Selection
+import Autodesk.Revit.Creation
+from Autodesk.Revit.UI import Selection
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+from RevitServices.Transactions import TransactionManager
+
+# Get the current Revit document
+doc = DocumentManager.Instance.CurrentDBDocument
+uidoc = DocumentManager.Instance.CurrentUIApplication.ActiveUIDocument
+
+def selectLink():
+    link = uidoc.Selection.PickObject(Selection.ObjectType.Element, "Select Revit link")
+    return doc.GetElement(link.ElementId)
+
+def getRooms(link, doc):
+    print(doc.ActiveView.Id)
+    linkViews = FilteredElementCollector(link).OfCategory(BuiltInCategory.OST_Views).OfClass(ViewPlan).ToElements()
+    lView = None
+    for i in linkViews:
+        if i.GenLevel:
+            if round(i.GenLevel.Elevation, 2) == round(doc.ActiveView.GenLevel.Elevation, 2):
+                lView = i
+                break
+    rooms = FilteredElementCollector(link, lView.Id).OfCategory(BuiltInCategory.OST_Rooms).ToElements()
+    return rooms
+
+def RoomsBoundaries(room):
+    level = room.Level
+    number = room.Number
+    name = room.LookupParameter("Name").AsString()
+    opt = SpatialElementBoundaryOptions()
+    boundaries = room.GetBoundarySegments(opt)
+    curves = []
+    for segment in boundaries:
+        for b in segment:
+            curve = b.GetCurve()
+            curves.append(curve)
+    position = room.Location
+    return name, number, level, curves, position.Point
+
+def recreateRoom(LinkRoom):
+    app = doc.Application
+    docCreation = Autodesk.Revit.Creation.Document
+    curveArr = CurveArray()
+    for c in LinkRoom[3]:
+        curveArr.Append(c)
+    doc.Create.NewRoomBoundaryLines(doc.ActiveView.SketchPlane, curveArr, doc.ActiveView)
+    tagPoint = UV(LinkRoom[4].X, LinkRoom[4].Y)
+    room = doc.Create.NewRoom(doc.ActiveView.GenLevel, tagPoint)
+    room.Number = LinkRoom[1]
+    room.Name = LinkRoom[0]
+    return room
+
+outlist = []
+if IN[0]:
+    link = selectLink()
+    t = Transaction(doc, "Create Rooms")
+    t.Start()
+    for r in getRooms(link.GetLinkDocument(), doc):
+        print(r)
+        room = RoomsBoundaries(r)
+        try:
+            outlist.append(recreateRoom(room))
+        except:
+            pass
+    t.Commit()
+    
+OUT= outlist
