@@ -1,3 +1,4 @@
+# refer to script by Pablo Derendinger - Innovation Team | GeeksGang
 import clr
 clr.AddReference('RevitAPI')
 from Autodesk.Revit.DB import *
