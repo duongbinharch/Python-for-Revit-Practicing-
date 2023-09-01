@@ -3,7 +3,6 @@ clr.AddReference('RevitAPI')
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI import Selection
 import Autodesk.Revit.Creation
-from Autodesk.Revit.UI import Selection
 import RevitServices
 from RevitServices.Persistence import DocumentManager
 from RevitServices.Transactions import TransactionManager
